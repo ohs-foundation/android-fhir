@@ -151,6 +151,39 @@ val patients = fhirEngine.search<Patient> {
 }
 ```
 
+### Paginating large result sets
+
+Avoid loading every matching resource into memory when displaying a list that may contain
+thousands of records. An unrestricted search such as `fhirEngine.search<Patient> {}`
+returns all matching patients, even when the screen displays only a few at a time.
+For a paginated list, apply appropriate filters and request only the page you need:
+
+```kotlin
+val pageSize = 20
+val pageIndex = 0 // Zero-based; increment to request the next page.
+
+val patientsPage = fhirEngine.search<Patient> {
+  sort(Patient.FAMILY, Order.ASCENDING)
+  count = pageSize
+  from = pageIndex * pageSize
+}
+```
+
+`count` sets the maximum number of returned resources, and `from` is a **zero-based result offset**,
+not a page number. Keep the filters and sort order consistent
+when fetching subsequent pages. A page with fewer than `pageSize` results means
+there are no further results at that point in the search. If a page is full,
+request the next one to determine whether more results exist.
+
+Offset-based pagination is not a snapshot: if resources are inserted or deleted
+between requests, items can be repeated or skipped. Also, sorting by a field
+with duplicate values (such as family name) does not guarantee a unique order.
+Refresh the result list when the underlying data changes rather than assuming
+pages remain stable indefinitely.
+
+See the [search performance measurements](https://github.com/ohs-foundation/android-fhir/pull/2669#issuecomment-2356369644)
+that motivated these recommendations.
+
 ### Search filter parameters by type
 
 #### Number
